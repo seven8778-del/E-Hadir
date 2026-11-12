@@ -15,9 +15,12 @@ import {
   Users,
   Eye,
   CheckCircle2,
+  Crosshair,
+  Check,
 } from 'lucide-react';
 import { Member, SessionSettings } from '../types';
-import { formatCoordinates, formatDistance } from '../utils/geolocation';
+import { storageService } from '../services/storage';
+import { formatCoordinates, formatDistance, getCurrentBrowserLocation } from '../utils/geolocation';
 
 interface LiveAttendanceMapProps {
   settings: SessionSettings;
@@ -32,6 +35,8 @@ export const LiveAttendanceMap: React.FC<LiveAttendanceMapProps> = ({
 }) => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showVenueInfo, setShowVenueInfo] = useState(false);
+  const [isLocatingCurrent, setIsLocatingCurrent] = useState(false);
+  const [pinNotice, setPinNotice] = useState<string | null>(null);
 
   // Retrieve Google Maps API key from Vite environment
   const apiKey =
@@ -74,6 +79,41 @@ export const LiveAttendanceMap: React.FC<LiveAttendanceMapProps> = ({
     );
   }
 
+  const handleUseCurrentLocation = async () => {
+    setIsLocatingCurrent(true);
+    setPinNotice(null);
+    try {
+      const res = await getCurrentBrowserLocation();
+      if (res.location) {
+        storageService.updateSettings({
+          venueLat: res.location.latitude,
+          venueLng: res.location.longitude,
+        });
+        setPinNotice('✓ Pin dewan berjaya ditetapkan mengikut koordinat peranti anda sekarang!');
+        setTimeout(() => setPinNotice(null), 3500);
+      } else {
+        alert(res.error || 'Gagal mengesan lokasi GPS.');
+      }
+    } catch (e) {
+      alert('Ralat semasa meminta lokasi GPS peranti.');
+    } finally {
+      setIsLocatingCurrent(false);
+    }
+  };
+
+  const handleMapClick = (e: any) => {
+    if (e.detail?.latLng) {
+      const newLat = e.detail.latLng.lat;
+      const newLng = e.detail.latLng.lng;
+      storageService.updateSettings({
+        venueLat: newLat,
+        venueLng: newLng,
+      });
+      setPinNotice(`✓ Pin dewan berjaya dialihkan ke titik baharu pada peta!`);
+      setTimeout(() => setPinNotice(null), 3500);
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4">
       {/* Map Control Header */}
@@ -95,24 +135,35 @@ export const LiveAttendanceMap: React.FC<LiveAttendanceMapProps> = ({
           </p>
         </div>
 
-        {/* Legend Chips */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
-            <span>Dalam Zon ({withinGeofenceCount})</span>
-          </div>
+        {/* Action Controls for Secretariat */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleUseCurrentLocation}
+            disabled={isLocatingCurrent}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-900 hover:bg-emerald-950 active:scale-[0.99] text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            title="Kesan kedudukan dewan secara automatik menggunakan GPS peranti anda sekarang"
+          >
+            <Crosshair className={`w-3.5 h-3.5 ${isLocatingCurrent ? 'animate-spin' : ''}`} />
+            <span>{isLocatingCurrent ? 'Mengesan GPS...' : 'Tetapkan Lokasi Semasa Saya'}</span>
+          </button>
+        </div>
+      </div>
 
-          {outsideGeofenceCount > 0 && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-amber-600" />
-              <span>Luar Zon ({outsideGeofenceCount})</span>
-            </div>
-          )}
-
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold">
-            <Building className="w-3.5 h-3.5 text-emerald-900" />
-            <span>Dewan Utama</span>
+      {/* Helpful Secretariat Toolstrip & Feedback */}
+      <div className="px-5">
+        {pinNotice && (
+          <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-emerald-800 animate-in fade-in">
+            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{pinNotice}</span>
           </div>
+        )}
+
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2 text-xs text-slate-600">
+          <MapPin className="w-4 h-4 text-emerald-800 shrink-0 mt-0.5" />
+          <p className="leading-snug">
+            <strong>Cara Mudah Menukar Pin Tanpa Taip Latitud:</strong> Anda boleh tekan butang <strong>"Tetapkan Lokasi Semasa Saya"</strong> di atas jika anda sedang berada di dewan, atau <strong>klik pada mana-mana titik di atas peta</strong> untuk mengalihkan Pin Dewan serta-merta.
+          </p>
         </div>
       </div>
 
@@ -130,7 +181,8 @@ export const LiveAttendanceMap: React.FC<LiveAttendanceMapProps> = ({
               mapId="DEMO_MAP_ID"
               gestureHandling="greedy"
               disableDefaultUI={false}
-              className="w-full h-full"
+              onClick={handleMapClick}
+              className="w-full h-full cursor-crosshair"
             >
               {/* Central Venue Marker */}
               <AdvancedMarker

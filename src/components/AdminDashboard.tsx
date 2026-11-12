@@ -22,11 +22,12 @@ import {
   ChevronRight,
   MapPin,
   Navigation,
+  Crosshair,
 } from 'lucide-react';
 import { Member, SessionSettings, AttendanceFilter } from '../types';
 import { storageService } from '../services/storage';
 import { exportAttendanceCSV, parseMasterListCSV, generateSampleCsvTemplate } from '../utils/csv';
-import { VENUE_PRESETS, VenuePreset } from '../utils/geolocation';
+import { VENUE_PRESETS, VenuePreset, getCurrentBrowserLocation } from '../utils/geolocation';
 import { SelfieModal } from './SelfieModal';
 import { LiveAttendanceMap } from './LiveAttendanceMap';
 
@@ -70,6 +71,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     settings.enableGeofence !== undefined ? settings.enableGeofence : true
   );
   const [settingsSavedNotice, setSettingsSavedNotice] = useState(false);
+  const [showManualCoords, setShowManualCoords] = useState(false);
+  const [isLocatingSettings, setIsLocatingSettings] = useState(false);
+  const [locationDetectNotice, setLocationDetectNotice] = useState<string | null>(null);
+
+  const handleUseCurrentLocationInSettings = async () => {
+    setIsLocatingSettings(true);
+    setLocationDetectNotice(null);
+    try {
+      const res = await getCurrentBrowserLocation();
+      if (res.location) {
+        setEditVenueLat(res.location.latitude);
+        setEditVenueLng(res.location.longitude);
+        setLocationDetectNotice('✓ Koordinat berjaya dikesan daripada peranti anda!');
+        setTimeout(() => setLocationDetectNotice(null), 3500);
+      } else {
+        alert(res.error || 'Gagal mengesan lokasi GPS peranti.');
+      }
+    } catch (e) {
+      alert('Ralat semasa meminta lokasi GPS peranti.');
+    } finally {
+      setIsLocatingSettings(false);
+    }
+  };
 
   // CSV upload state
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -648,10 +672,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               {/* Geofencing & Venue Configuration Section */}
               <div className="pt-4 border-t border-slate-200/80 space-y-3">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-950 uppercase tracking-wider">
-                  <MapPin className="w-4 h-4 text-emerald-800" />
-                  <span>Lokasi Dewan & Geofens Fizikal</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                    <MapPin className="w-4 h-4 text-emerald-800" />
+                    <span>Lokasi Dewan & Geofens Fizikal</span>
+                  </div>
+
+                  {/* 1-Click Current Location Detection Button */}
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocationInSettings}
+                    disabled={isLocatingSettings}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-900 hover:bg-emerald-950 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                    title="Gunakan koordinat peranti anda sekarang tanpa perlu menaip nombor"
+                  >
+                    <Crosshair className={`w-3 h-3 ${isLocatingSettings ? 'animate-spin' : ''}`} />
+                    <span>{isLocatingSettings ? 'Mengesan GPS...' : '📍 Guna Lokasi Semasa'}</span>
+                  </button>
                 </div>
+
+                {locationDetectNotice && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{locationDetectNotice}</span>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -666,10 +711,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   />
                 </div>
 
-                {/* Preset Venue Buttons */}
+                {/* Preset Venue Buttons - 1 Click without typing latitude */}
                 <div>
                   <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5 font-bold">
-                    Pilihan Lokasi Dewan Popular:
+                    Pilihan Lokasi Dewan Popular (1-Klik Tanpa Perlu Taip):
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {VENUE_PRESETS.map((p) => (
@@ -689,34 +734,56 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Latitud Dewan (U/S)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={editVenueLat}
-                      onChange={(e) => setEditVenueLat(Number(e.target.value))}
-                      required
-                      className="w-full text-xs font-mono font-medium px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-800 focus:outline-hidden"
-                    />
-                  </div>
+                {/* Visual Map Pinning Tip */}
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 space-y-1">
+                  <p className="leading-snug">
+                    <strong>📍 Cara Mudah Menukar Lokasi:</strong> Tekan butang <strong>"Guna Lokasi Semasa"</strong> di atas jika anda berada di dewan, atau buka tab <strong>"Peta Geofens Dewan"</strong> dan <strong>klik pada mana-mana titik di atas peta</strong> untuk mengalihkan pin dewan secara visual.
+                  </p>
+                </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Longitud Dewan (T/B)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={editVenueLng}
-                      onChange={(e) => setEditVenueLng(Number(e.target.value))}
-                      required
-                      className="w-full text-xs font-mono font-medium px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-800 focus:outline-hidden"
-                    />
-                  </div>
+                {/* Collapsible Manual Coordinates for Advanced Users Only */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowManualCoords(!showManualCoords)}
+                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                  >
+                    {showManualCoords
+                      ? '▼ Sembunyikan Input Nombor Koordinat'
+                      : '▶ Masukkan Koordinat Latitud/Longitud Manual (Lanjutan)'}
+                  </button>
+
+                  {showManualCoords && (
+                    <div className="grid grid-cols-2 gap-3 mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Latitud Dewan
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={editVenueLat}
+                          onChange={(e) => setEditVenueLat(Number(e.target.value))}
+                          required
+                          className="w-full text-xs font-mono font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-hidden"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Longitud Dewan
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={editVenueLng}
+                          onChange={(e) => setEditVenueLng(Number(e.target.value))}
+                          required
+                          className="w-full text-xs font-mono font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-hidden"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
