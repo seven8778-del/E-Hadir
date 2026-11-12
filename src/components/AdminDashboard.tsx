@@ -23,6 +23,7 @@ import {
   MapPin,
   Navigation,
   Crosshair,
+  QrCode,
 } from 'lucide-react';
 import { Member, SessionSettings, AttendanceFilter } from '../types';
 import { storageService } from '../services/storage';
@@ -37,6 +38,7 @@ interface AdminDashboardProps {
   onOpenHallScreen: () => void;
   onOpenFirebaseConfig: () => void;
   onSwitchToKiosk: () => void;
+  onOpenQrModal?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -45,6 +47,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onOpenHallScreen,
   onOpenFirebaseConfig,
   onSwitchToKiosk,
+  onOpenQrModal,
 }) => {
   const [activeTab, setActiveTab] = useState<'monitoring' | 'map' | 'settings'>('monitoring');
   const [searchQuery, setSearchQuery] = useState('');
@@ -238,6 +241,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {onOpenQrModal && (
+            <button
+              onClick={onOpenQrModal}
+              type="button"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 transition-colors shadow-xs cursor-pointer"
+            >
+              <QrCode className="w-4 h-4 text-emerald-800" />
+              <span>Papar Kod QR Dewan</span>
+            </button>
+          )}
+
           <button
             onClick={handleToggleRegistration}
             type="button"

@@ -64,6 +64,28 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
     setLiveLocation(null);
   };
 
+  // Auto-detect ?staffId= query parameter from QR code scan
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const paramStaffId = params.get('staffId');
+    if (paramStaffId) {
+      const normalized = normalizeStaffId(paramStaffId);
+      setInputStaffId(normalized);
+      const member = storageService.findMemberByStaffId(normalized);
+      if (member) {
+        if (member.hasAttended) {
+          setCurrentMember(member);
+          setStep('already-attended');
+        } else {
+          setCurrentMember(member);
+          setStep('confirm-profile');
+          handleDetectLocation();
+        }
+      }
+    }
+  }, [handleDetectLocation]);
+
   // Step 1: Verify Staff ID (FR-002, FR-003, BR-01)
   const handleCheckStaffId = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -156,10 +178,15 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
         <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
           {settings.meetingTitle}
         </h1>
-        <div className="flex items-center justify-center gap-2 mt-2 text-xs text-slate-500 font-medium">
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-2 text-xs text-slate-500 font-medium">
           <span>Tarikh: {settings.meetingDate}</span>
           <span aria-hidden="true" className="text-slate-300">·</span>
           <span>Kaunter Rasmi & BYOD</span>
+          <span aria-hidden="true" className="text-slate-300">·</span>
+          <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+            <span>Segerak Langsung</span>
+          </span>
         </div>
       </div>
 

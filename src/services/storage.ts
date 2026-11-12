@@ -95,9 +95,18 @@ type Listener = () => void;
 class StorageService {
   private listeners: Set<Listener> = new Set();
   private broadcastChannel: BroadcastChannel | null = null;
+  private eventSource: EventSource | null = null;
+  private isConnectedToServer: boolean = false;
+  private reconnectTimer: any = null;
 
   constructor() {
     this.initDefaults();
+    this.initBroadcastChannel();
+    this.initServerSync();
+    this.initStorageEventListener();
+  }
+
+  private initBroadcastChannel(): void {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
         this.broadcastChannel = new BroadcastChannel(SYNC_CHANNEL_NAME);
@@ -110,12 +119,134 @@ class StorageService {
         console.warn('BroadcastChannel not supported or blocked:', err);
       }
     }
-    // Also listen to storage events across separate browser tabs
+  }
+
+  private initStorageEventListener(): void {
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', () => {
         this.notifyLocal();
       });
     }
+  }
+
+  /**
+   * Initializes real-time SSE stream with backend for cross-device synchronization (QR & link)
+   */
+  public initServerSync(): void {
+    if (typeof window === 'undefined' || typeof EventSource === 'undefined') return;
+
+    // Fetch initial snapshot from server
+    fetch('/api/session')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch session');
+        return res.json();
+      })
+      .then((data) => {
+        if (data?.members && Array.isArray(data.members)) {
+          localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(data.members));
+        }
+        if (data?.settings) {
+          const current = this.getSettings();
+          localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({ ...current, ...data.settings }));
+        }
+        this.notifyLocal();
+      })
+      .catch(() => {
+        // Fallback to local storage if server is starting up or offline
+      });
+
+    // Setup SSE connection
+    try {
+      if (this.eventSource) {
+        this.eventSource.close();
+      }
+
+      this.eventSource = new EventSource('/api/stream');
+
+      this.eventSource.onopen = () => {
+        this.isConnectedToServer = true;
+        this.notifyLocal();
+      };
+
+      this.eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (!data || !data.type) return;
+
+          switch (data.type) {
+            case 'INITIAL_SYNC':
+              if (data.payload?.members) {
+                localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(data.payload.members));
+              }
+              if (data.payload?.settings) {
+                const current = this.getSettings();
+                localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({ ...current, ...data.payload.settings }));
+              }
+              this.notifyLocal();
+              break;
+
+            case 'ATTENDANCE_RECORDED':
+              if (data.payload?.member) {
+                const member: Member = data.payload.member;
+                const members = this.getAllMembers();
+                const idx = members.findIndex((m) => m.staffId === member.staffId);
+                if (idx !== -1) {
+                  members[idx] = member;
+                } else {
+                  members.push(member);
+                }
+                localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(members));
+                this.notifyLocal();
+              }
+              break;
+
+            case 'SETTINGS_UPDATED':
+              if (data.payload) {
+                const current = this.getSettings();
+                localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({ ...current, ...data.payload }));
+                this.notifyLocal();
+              }
+              break;
+
+            case 'MASTER_LIST_UPDATED':
+            case 'SESSION_RESET':
+              if (data.payload?.members) {
+                localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(data.payload.members));
+              }
+              if (data.payload?.settings) {
+                const current = this.getSettings();
+                localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({ ...current, ...data.payload.settings }));
+              }
+              this.notifyLocal();
+              break;
+          }
+        } catch (e) {
+          // Ignore heartbeat or non-json message
+        }
+      };
+
+      this.eventSource.onerror = () => {
+        this.isConnectedToServer = false;
+        this.notifyLocal();
+        // Reconnect after 3 seconds
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+        if (!this.reconnectTimer) {
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            this.initServerSync();
+          }, 3000);
+        }
+      };
+    } catch (err) {
+      this.isConnectedToServer = false;
+    }
+  }
+
+  public isLiveConnected(): boolean {
+    return this.isConnectedToServer;
   }
 
   private initDefaults(): void {
@@ -195,6 +326,18 @@ class StorageService {
     };
     localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(updated));
     this.notifyAll();
+
+    // Broadcast update across all devices on the same link / QR code
+    if (typeof window !== 'undefined') {
+      fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partial),
+      }).catch(() => {
+        // Fallback gracefully if offline
+      });
+    }
+
     return updated;
   }
 
@@ -221,6 +364,7 @@ class StorageService {
 
   /**
    * Registers attendance for a member with duplicate protection (BR-02) and optional geolocation.
+   * Broadcasts immediately to all other connected screens (Urus Setia laptop & Hall Projector).
    */
   public recordAttendance(
     staffId: string,
@@ -278,6 +422,21 @@ class StorageService {
     });
 
     this.notifyAll();
+
+    // Broadcast to server so all other phones, secretariat laptops, and hall screens update live!
+    if (typeof window !== 'undefined') {
+      fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          staffId: normalized,
+          selfieUrl: selfieDataUrl,
+          location: location || null,
+        }),
+      }).catch((err) => {
+        console.warn('Background attendance broadcast failed, offline copy saved:', err);
+      });
+    }
 
     return {
       success: true,
@@ -347,6 +506,15 @@ class StorageService {
 
     this.notifyAll();
 
+    // Broadcast uploaded master list to all devices
+    if (typeof window !== 'undefined') {
+      fetch('/api/members/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: incomingRows, mode }),
+      }).catch(() => {});
+    }
+
     return {
       addedCount,
       updatedCount,
@@ -379,6 +547,15 @@ class StorageService {
       );
     }
     this.notifyAll();
+
+    // Broadcast reset to all devices
+    if (typeof window !== 'undefined') {
+      fetch('/api/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keepMasterList }),
+      }).catch(() => {});
+    }
   }
 
   // --- Firebase Configuration ---

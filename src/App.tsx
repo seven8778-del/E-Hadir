@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Lock, ShieldCheck, Monitor } from 'lucide-react';
+import { Lock, ShieldCheck, Monitor, QrCode } from 'lucide-react';
 import { storageService } from './services/storage';
 import { Member, SessionSettings } from './types';
 import { Header } from './components/Header';
@@ -13,6 +13,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { AdminPinModal } from './components/AdminPinModal';
 import { HallScreenModal } from './components/HallScreenModal';
 import { FirebaseConfigModal } from './components/FirebaseConfigModal';
+import { QrModal } from './components/QrModal';
 
 export default function App() {
   const [settings, setSettings] = useState<SessionSettings>(() => storageService.getSettings());
@@ -29,6 +30,7 @@ export default function App() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [showHallScreenModal, setShowHallScreenModal] = useState(false);
   const [showFirebaseModal, setShowFirebaseModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   // Subscribe to real-time updates from storage service (across tabs and components)
   useEffect(() => {
@@ -76,6 +78,7 @@ export default function App() {
         onOpenAdminLogin={handleOpenAdminLogin}
         onExitAdmin={handleExitAdmin}
         onOpenHallScreen={() => setShowHallScreenModal(true)}
+        onOpenQrModal={() => setShowQrModal(true)}
         isFirebaseActive={isFirebaseActive}
       />
 
@@ -88,6 +91,7 @@ export default function App() {
             onOpenHallScreen={() => setShowHallScreenModal(true)}
             onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
             onSwitchToKiosk={() => setActiveView('member')}
+            onOpenQrModal={() => setShowQrModal(true)}
           />
         ) : (
           <MemberRegistration
@@ -108,6 +112,15 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4 text-xs text-slate-500">
+            <button
+              onClick={() => setShowQrModal(true)}
+              type="button"
+              className="hover:text-emerald-900 transition-colors flex items-center gap-1.5 cursor-pointer font-medium text-emerald-950"
+            >
+              <QrCode className="w-3.5 h-3.5 text-emerald-800" />
+              <span>Kod QR Pendaftaran</span>
+            </button>
+            <span aria-hidden="true" className="text-slate-300">·</span>
             <button
               onClick={() => setShowHallScreenModal(true)}
               type="button"
@@ -149,6 +162,14 @@ export default function App() {
       <FirebaseConfigModal
         isOpen={showFirebaseModal}
         onClose={() => setShowFirebaseModal(false)}
+      />
+
+      {/* Live QR Code Registration Modal */}
+      <QrModal
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        settings={settings}
+        members={members}
       />
     </div>
   );

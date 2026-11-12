@@ -26,7 +26,7 @@ export const HallScreenModal: React.FC<HallScreenModalProps> = ({
 
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {
-      const currentUrl = window.location.href;
+      const currentUrl = window.location.origin + window.location.pathname;
       QRCode.toDataURL(currentUrl, {
         width: 400,
         margin: 2,
@@ -119,13 +119,18 @@ export const HallScreenModal: React.FC<HallScreenModalProps> = ({
 
         {/* Right: Real-time Quorum & Attendance Monitor */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
             <span
               className={`font-semibold ${
                 settings.isRegistrationOpen ? 'text-emerald-400' : 'text-rose-400'
               }`}
             >
               {settings.isRegistrationOpen ? '● Pendaftaran Sedang Dibuka' : '● Pendaftaran Telah Ditutup'}
+            </span>
+            <span aria-hidden="true" className="text-slate-700">·</span>
+            <span className="inline-flex items-center gap-1.5 text-emerald-300 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/60">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Segerak Langsung (Live Update)</span>
             </span>
             <span aria-hidden="true" className="text-slate-700">·</span>
             <span className="text-slate-400 font-mono">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Monitor, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Lock, Monitor, ShieldCheck, ArrowRight, QrCode } from 'lucide-react';
 import { SessionSettings } from '../types';
 
 interface HeaderProps {
@@ -8,6 +8,7 @@ interface HeaderProps {
   onOpenAdminLogin: () => void;
   onExitAdmin: () => void;
   onOpenHallScreen: () => void;
+  onOpenQrModal?: () => void;
   isFirebaseActive: boolean;
 }
 
@@ -17,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdminLogin,
   onExitAdmin,
   onOpenHallScreen,
+  onOpenQrModal,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
@@ -67,6 +69,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Zone 3: Functional Actions */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {onOpenQrModal && (
+              <button
+                onClick={onOpenQrModal}
+                type="button"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-lg transition-colors min-h-[36px] cursor-pointer"
+                title="Papar Kod QR Pendaftaran Dewan"
+              >
+                <QrCode className="w-4 h-4 text-emerald-800" />
+                <span className="hidden sm:inline">Kod QR Dewan</span>
+              </button>
+            )}
+
             <button
               onClick={onOpenHallScreen}
               type="button"
