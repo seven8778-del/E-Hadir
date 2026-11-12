@@ -175,30 +175,6 @@ export const DigitalPass: React.FC<DigitalPassProps> = ({
                 <span className="truncate">{member.department}</span>
               </div>
             </div>
-
-            {/* Geolocation Verification Row */}
-            <div className="p-3 bg-slate-50">
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
-                Pengesahan Lokasi & Geofens Dewan
-              </span>
-              <div className="flex items-center justify-between gap-2 mt-1">
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block animate-pulse shrink-0" />
-                  <span className="font-semibold text-slate-800">
-                    {member.location
-                      ? member.location.isWithinGeofence
-                        ? `Dalam Zon Dewan (~${member.location.distanceFromVenueMeters || 0}m)`
-                        : `Luar Zon Dewan (~${member.location.distanceFromVenueMeters || 0}m)`
-                      : 'Kiosk Fizikal Dewan (Manual)'}
-                  </span>
-                </div>
-                {member.location && (
-                  <span className="text-[10px] font-mono font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                    {member.location.latitude.toFixed(4)}°, {member.location.longitude.toFixed(4)}°
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
 
           <p className="text-[11px] text-slate-400 text-center leading-relaxed">

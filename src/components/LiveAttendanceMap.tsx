@@ -81,7 +81,10 @@ export const LiveAttendanceMap: React.FC<LiveAttendanceMapProps> = ({
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-900 uppercase tracking-wider mb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping inline-block" />
-            <span>Peta Interaktif Lokasi Dewan & Geofens Masa Nyata</span>
+            <span>Peta Interaktif Lokasi Dewan & Geofens</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 lowercase first-letter:uppercase">
+              Rekod Urus Setia Sahaja
+            </span>
           </div>
           <h2 className="text-base font-bold text-slate-900">
             {settings.venueName || 'Dewan Utama Mesyuarat'}

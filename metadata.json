@@ -1,6 +1,11 @@
 {
   "name": "e-Hadir — Sistem Kehadiran Mesyuarat Agung & Kiosk",
   "description": "Aplikasi web responsif untuk merekod kehadiran ahli Mesyuarat Agung secara sahih melalui No. Gaji, kamera live selfie, dan pemantauan kuorum masa nyata.",
-  "requestFramePermissions": ["camera", "geolocation"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

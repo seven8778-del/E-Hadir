@@ -78,7 +78,7 @@ export const SelfieModal: React.FC<SelfieModalProps> = ({ member, onClose }) => 
           {member.location && (
             <div className="pt-3 border-t border-slate-100 space-y-1">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-500">Audit Lokasi Fizikal:</span>
+                <span className="text-slate-500 font-medium">Audit Lokasi (Urus Setia Sahaja):</span>
                 <span
                   className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
                     member.location.isWithinGeofence
