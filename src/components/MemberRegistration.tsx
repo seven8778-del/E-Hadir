@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Search,
   UserCheck,
@@ -8,11 +8,11 @@ import {
   XCircle,
   RefreshCw,
   KeyRound,
+  MapPin,
 } from 'lucide-react';
-import { Member, MemberLocation, RegistrationStep, SessionSettings } from '../types';
+import { Member, RegistrationStep, SessionSettings } from '../types';
 import { storageService } from '../services/storage';
 import { normalizeStaffId } from '../utils/formatters';
-import { getCurrentBrowserLocation } from '../utils/geolocation';
 import { CameraCapture } from './CameraCapture';
 import { DigitalPass } from './DigitalPass';
 
@@ -33,25 +33,6 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [pendingSelfie, setPendingSelfie] = useState<string | null>(null);
 
-  // Background Geolocation state (recorded silently for Secretariat audit)
-  const [liveLocation, setLiveLocation] = useState<MemberLocation | null>(null);
-
-  // Acquire browser location silently in background for Urus Setia
-  const handleDetectLocation = useCallback(async () => {
-    try {
-      const res = await getCurrentBrowserLocation(
-        settings.venueLat,
-        settings.venueLng,
-        settings.geofenceRadiusMeters || 500
-      );
-      if (res.location) {
-        setLiveLocation(res.location);
-      }
-    } catch (e) {
-      // Handled silently - attendance is not blocked
-    }
-  }, [settings.venueLat, settings.venueLng, settings.geofenceRadiusMeters]);
-
   // Reset form back to Step 1 (for tablet kiosk flow or manual reset)
   const handleReset = () => {
     setStep('check-id');
@@ -61,7 +42,6 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
     setIsSubmitting(false);
     setSubmissionError(null);
     setPendingSelfie(null);
-    setLiveLocation(null);
   };
 
   // Auto-detect ?staffId= query parameter from QR code scan
@@ -80,11 +60,10 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
         } else {
           setCurrentMember(member);
           setStep('confirm-profile');
-          handleDetectLocation();
         }
       }
     }
-  }, [handleDetectLocation]);
+  }, []);
 
   // Step 1: Verify Staff ID (FR-002, FR-003, BR-01)
   const handleCheckStaffId = (e?: React.FormEvent) => {
@@ -122,8 +101,6 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
     // Member found and eligible
     setCurrentMember(member);
     setStep('confirm-profile');
-    // Start locating attendee seamlessly
-    handleDetectLocation();
   };
 
   // Step 2 -> Step 3: Go to live camera
@@ -142,8 +119,7 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
       await new Promise((r) => setTimeout(r, 600));
       const result = storageService.recordAttendance(
         currentMember.staffId,
-        selfieDataUrl,
-        liveLocation
+        selfieDataUrl
       );
 
       if (result.success && result.member) {
@@ -170,7 +146,7 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
 
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-8 sm:py-12">
-      {/* Session Header Section */}
+      {/* Session Header Section with Venue & Full Address */}
       <div className="text-center mb-8">
         <p className="text-xs font-semibold text-emerald-900 tracking-wider uppercase mb-1.5">
           Pendaftaran Kehadiran Mesyuarat
@@ -178,7 +154,25 @@ export const MemberRegistration: React.FC<MemberRegistrationProps> = ({
         <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
           {settings.meetingTitle}
         </h1>
-        <div className="flex flex-wrap items-center justify-center gap-2 mt-2 text-xs text-slate-500 font-medium">
+
+        {/* Venue & Full Address Card (Text-based, No GPS/Map) */}
+        <div className="mt-4 p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs inline-block text-left max-w-md w-full">
+          <div className="flex items-start gap-2.5">
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-900 shrink-0 mt-0.5">
+              <MapPin className="w-4 h-4 text-emerald-800" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-slate-900 block leading-tight">
+                {settings.venueName || 'Dewan Utama'}
+              </span>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed break-words">
+                {settings.venueAddress || 'Alamat dewan rasmi mesyuarat'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-3 text-xs text-slate-500 font-medium">
           <span>Tarikh: {settings.meetingDate}</span>
           <span aria-hidden="true" className="text-slate-300">·</span>
           <span>Kaunter Rasmi & BYOD</span>

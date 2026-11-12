@@ -73,32 +73,6 @@ export const SelfieModal: React.FC<SelfieModalProps> = ({ member, onClose }) => 
               {member.attendedAt || '-'}
             </span>
           </div>
-
-          {/* Member Geolocation details if present */}
-          {member.location && (
-            <div className="pt-3 border-t border-slate-100 space-y-1">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-500 font-medium">Audit Lokasi (Urus Setia Sahaja):</span>
-                <span
-                  className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
-                    member.location.isWithinGeofence
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}
-                >
-                  {member.location.isWithinGeofence ? 'Dalam Zon Dewan' : 'Luar Geofens'}
-                </span>
-              </div>
-              <p className="font-mono text-xs text-slate-800">
-                {member.location.latitude.toFixed(5)}°, {member.location.longitude.toFixed(5)}°
-              </p>
-              {member.location.distanceFromVenueMeters !== undefined && (
-                <p className="text-[10px] text-slate-500">
-                  Jarak ke dewan: ~{member.location.distanceFromVenueMeters}m (Ketepatan GPS ~{member.location.accuracy}m)
-                </p>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

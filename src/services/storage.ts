@@ -1,4 +1,4 @@
-import { Member, MemberLocation, SessionSettings, FirebaseConfig } from '../types';
+import { Member, SessionSettings, FirebaseConfig } from '../types';
 import { getCurrentTimestamp, normalizeStaffId } from '../utils/formatters';
 
 const STORAGE_KEY_SETTINGS = 'ehadir_session_settings_v1';
@@ -8,11 +8,11 @@ const SYNC_CHANNEL_NAME = 'ehadir_realtime_sync_channel';
 
 // Initial realistic default master list (Malaysian Cooperative / Organizational setting)
 const INITIAL_MEMBERS: Member[] = [
-  { staffId: 'LGM1001', fullName: 'Ahmad Razali bin Ismail', department: 'Bahagian Kewangan & Akaun', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1002', fullName: 'Siti Nurhaliza binti Mahfuz', department: 'Bahagian Sumber Manusia', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1003', fullName: 'Tan Wei Ming', department: 'Bahagian Teknologi Maklumat', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1004', fullName: 'Muthusamy a/l Arumugam', department: 'Bahagian Operasi & Logistik', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1005', fullName: 'Nurul Ain binti Zulkifli', department: 'Cawangan Zon Utara', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
+  { staffId: 'LGM1001', fullName: 'Ahmad Razali bin Ismail', department: 'Bahagian Kewangan & Akaun', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1002', fullName: 'Siti Nurhaliza binti Mahfuz', department: 'Bahagian Sumber Manusia', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1003', fullName: 'Tan Wei Ming', department: 'Bahagian Teknologi Maklumat', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1004', fullName: 'Muthusamy a/l Arumugam', department: 'Bahagian Operasi & Logistik', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1005', fullName: 'Nurul Ain binti Zulkifli', department: 'Cawangan Zon Utara', hasAttended: false, attendedAt: null, selfieUrl: null },
   {
     staffId: 'LGM1006',
     fullName: 'Mohd Hafiz bin Sulaiman',
@@ -20,14 +20,6 @@ const INITIAL_MEMBERS: Member[] = [
     hasAttended: true,
     attendedAt: '12/11/2026 08:45:12',
     selfieUrl: null,
-    location: {
-      latitude: 3.1534,
-      longitude: 101.7146,
-      accuracy: 12,
-      timestamp: '2026-11-12T08:45:12.000Z',
-      distanceFromVenueMeters: 42,
-      isWithinGeofence: true,
-    },
   },
   {
     staffId: 'LGM1007',
@@ -36,14 +28,6 @@ const INITIAL_MEMBERS: Member[] = [
     hasAttended: true,
     attendedAt: '12/11/2026 08:52:30',
     selfieUrl: null,
-    location: {
-      latitude: 3.1528,
-      longitude: 101.7141,
-      accuracy: 15,
-      timestamp: '2026-11-12T08:52:30.000Z',
-      distanceFromVenueMeters: 55,
-      isWithinGeofence: true,
-    },
   },
   {
     staffId: 'LGM1008',
@@ -52,27 +36,19 @@ const INITIAL_MEMBERS: Member[] = [
     hasAttended: true,
     attendedAt: '12/11/2026 09:02:15',
     selfieUrl: null,
-    location: {
-      latitude: 3.1595,
-      longitude: 101.718,
-      accuracy: 20,
-      timestamp: '2026-11-12T09:02:15.000Z',
-      distanceFromVenueMeters: 820,
-      isWithinGeofence: false,
-    },
   },
-  { staffId: 'LGM1009', fullName: 'Kavitha a/p Subramaniam', department: 'Bahagian Kewangan & Akaun', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1010', fullName: 'Zulkarnain bin Shamsudin', department: 'Bahagian Operasi & Logistik', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1011', fullName: 'Noraini binti Abdul Rahman', department: 'Bahagian Sumber Manusia', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1012', fullName: 'Chong Kah Yee', department: 'Bahagian Audit & Integriti', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1013', fullName: 'Azlan bin Kamaruddin', department: 'Bahagian Keselamatan', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1014', fullName: 'Dayangku Intan binti Awang', department: 'Cawangan Zon Timur', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1015', fullName: 'Raj Kumar a/l Ganesan', department: 'Bahagian Khidmat Korporat', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1016', fullName: 'Hajah Maznah binti Kassim', department: 'Bahagian Pentadbiran Am', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1017', fullName: 'Khairul Anuar bin Osman', department: 'Bahagian Teknologi Maklumat', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1018', fullName: 'Wendy Lim Siew Fern', department: 'Bahagian Hal Ehwal Ahli', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1019', fullName: 'Muhamad Syahril bin Hamdan', department: 'Bahagian Penyelidikan', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
-  { staffId: 'LGM1020', fullName: 'Sharifah Nadia binti Syed Omar', department: 'Bahagian Hal Ehwal Ahli', hasAttended: false, attendedAt: null, selfieUrl: null, location: null },
+  { staffId: 'LGM1009', fullName: 'Kavitha a/p Subramaniam', department: 'Bahagian Kewangan & Akaun', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1010', fullName: 'Zulkarnain bin Shamsudin', department: 'Bahagian Operasi & Logistik', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1011', fullName: 'Noraini binti Abdul Rahman', department: 'Bahagian Sumber Manusia', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1012', fullName: 'Chong Kah Yee', department: 'Bahagian Audit & Integriti', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1013', fullName: 'Azlan bin Kamaruddin', department: 'Bahagian Keselamatan', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1014', fullName: 'Dayangku Intan binti Awang', department: 'Cawangan Zon Timur', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1015', fullName: 'Raj Kumar a/l Ganesan', department: 'Bahagian Khidmat Korporat', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1016', fullName: 'Hajah Maznah binti Kassim', department: 'Bahagian Pentadbiran Am', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1017', fullName: 'Khairul Anuar bin Osman', department: 'Bahagian Teknologi Maklumat', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1018', fullName: 'Wendy Lim Siew Fern', department: 'Bahagian Hal Ehwal Ahli', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1019', fullName: 'Muhamad Syahril bin Hamdan', department: 'Bahagian Penyelidikan', hasAttended: false, attendedAt: null, selfieUrl: null },
+  { staffId: 'LGM1020', fullName: 'Sharifah Nadia binti Syed Omar', department: 'Bahagian Hal Ehwal Ahli', hasAttended: false, attendedAt: null, selfieUrl: null },
 ];
 
 const INITIAL_SETTINGS: SessionSettings = {
@@ -83,11 +59,8 @@ const INITIAL_SETTINGS: SessionSettings = {
   totalEligibleMembers: INITIAL_MEMBERS.length,
   adminPin: '123456',
   updatedAt: new Date().toISOString(),
-  venueName: 'Pusat Konvensyen Kuala Lumpur (KLCC) - Dewan Perdana',
-  venueLat: 3.1531,
-  venueLng: 101.7144,
-  geofenceRadiusMeters: 500,
-  enableGeofence: true,
+  venueName: 'Dewan Utama',
+  venueAddress: 'Wisma Getah Asli, 148 Jalan Ampang, 50450 Kuala Lumpur',
 };
 
 type Listener = () => void;
@@ -256,7 +229,7 @@ class StorageService {
     } else {
       try {
         const existing = JSON.parse(localStorage.getItem(STORAGE_KEY_SETTINGS)!);
-        if (!existing.venueLat || !existing.venueName) {
+        if (!existing.venueAddress || !existing.venueName) {
           localStorage.setItem(
             STORAGE_KEY_SETTINGS,
             JSON.stringify({ ...INITIAL_SETTINGS, ...existing })
@@ -363,13 +336,12 @@ class StorageService {
   }
 
   /**
-   * Registers attendance for a member with duplicate protection (BR-02) and optional geolocation.
+   * Registers attendance for a member with duplicate protection (BR-02) and mandatory live camera selfie.
    * Broadcasts immediately to all other connected screens (Urus Setia laptop & Hall Projector).
    */
   public recordAttendance(
     staffId: string,
-    selfieDataUrl: string,
-    location?: MemberLocation | null
+    selfieDataUrl: string
   ): { success: boolean; member?: Member; error?: string } {
     const normalized = normalizeStaffId(staffId);
     const settings = this.getSettings();
@@ -410,7 +382,6 @@ class StorageService {
       hasAttended: true,
       attendedAt: timestamp,
       selfieUrl: selfieDataUrl,
-      location: location || null,
     };
 
     members[index] = updatedMember;
@@ -431,7 +402,6 @@ class StorageService {
         body: JSON.stringify({
           staffId: normalized,
           selfieUrl: selfieDataUrl,
-          location: location || null,
         }),
       }).catch((err) => {
         console.warn('Background attendance broadcast failed, offline copy saved:', err);
@@ -465,7 +435,6 @@ class StorageService {
         hasAttended: false,
         attendedAt: null,
         selfieUrl: null,
-        location: null,
       }));
       addedCount = finalMembers.length;
     } else {
@@ -490,7 +459,6 @@ class StorageService {
             hasAttended: false,
             attendedAt: null,
             selfieUrl: null,
-            location: null,
           });
           addedCount++;
         }
@@ -533,7 +501,6 @@ class StorageService {
         hasAttended: false,
         attendedAt: null,
         selfieUrl: null,
-        location: null,
       }));
       localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(resetList));
     } else {

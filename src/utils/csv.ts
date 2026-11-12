@@ -161,7 +161,34 @@ function parseCsvLine(line: string): string[] {
 /**
  * Exports members list to CSV with UTF-8 BOM, compliant with Microsoft Excel and Google Sheets.
  */
-export function exportAttendanceCSV(members: Member[], meetingDate: string): void {
+/**
+ * Exports members list to CSV with UTF-8 BOM, compliant with Microsoft Excel and Google Sheets.
+ * Includes official venueName and venueAddress metadata and columns.
+ */
+export function exportAttendanceCSV(
+  members: Member[],
+  meetingTitle: string,
+  meetingDate: string,
+  venueName: string,
+  venueAddress: string
+): void {
+  const attendedCount = members.filter((m) => m.hasAttended).length;
+  const cleanDate = meetingDate || new Date().toISOString().split('T')[0];
+
+  // Official Institutional Metadata Block
+  const metadataBlock = [
+    ['"REKOD KEHADIRAN RASMI MESYUARAT — e-Hadir"'],
+    [`"Tajuk Mesyuarat:",${escapeCsvField(meetingTitle)}`],
+    [`"Tarikh Sesi:",${escapeCsvField(cleanDate)}`],
+    [`"Nama Dewan / Lokasi:",${escapeCsvField(venueName || 'Dewan Utama')}`],
+    [`"Alamat Penuh:",${escapeCsvField(venueAddress || '-')}`],
+    [`"Jumlah Ahli Layak:",${members.length}`],
+    [`"Jumlah Kehadiran Sah:",${attendedCount}`],
+    [`"Peratusan Kehadiran:",${members.length > 0 ? Math.round((attendedCount / members.length) * 1000) / 10 : 0}%`],
+    [`"Tarikh Laporan Dijana:",${escapeCsvField(new Date().toLocaleString('ms-MY'))}`],
+    [''], // blank line before table
+  ].map((row) => row.join(','));
+
   const headers = [
     'Bil',
     'No_Gaji',
@@ -169,26 +196,22 @@ export function exportAttendanceCSV(members: Member[], meetingDate: string): voi
     'Bahagian_Cawangan',
     'Status_Kehadiran',
     'Masa_Daftar',
-    'Koordinat_Lat_Lng',
-    'Jarak_Dewan_Meter',
-    'Status_Geofens',
-    'Pautan_Selfie_URL',
+    'Lokasi_Dewan',
+    'Alamat_Dewan',
+    'Pengesahan_Swafoto',
   ];
 
   const rows = members.map((m, index) => {
-    const status = m.hasAttended ? 'Hadir' : 'Tidak Hadir';
+    const status = m.hasAttended ? 'Hadir Sah' : 'Tidak Hadir';
     const time = m.attendedAt || '-';
-    const coords = m.location ? `${m.location.latitude.toFixed(5)}, ${m.location.longitude.toFixed(5)}` : '-';
-    const dist = m.location?.distanceFromVenueMeters !== undefined ? `${m.location.distanceFromVenueMeters}m` : '-';
-    const geofence = m.location?.isWithinGeofence !== undefined ? (m.location.isWithinGeofence ? 'Dalam Radius Dewan' : 'Di Luar Radius') : '-';
 
-    // If selfie is a base64 string, label as embedded photo or display URL
+    // If selfie is present, label clearly for audit
     let selfieDisplay = '-';
     if (m.selfieUrl) {
       if (m.selfieUrl.startsWith('http')) {
         selfieDisplay = m.selfieUrl;
       } else {
-        selfieDisplay = `[Foto Selfie Tersimpan - ${m.staffId}]`;
+        selfieDisplay = `[Swafoto Sah Wajah - ${m.staffId}]`;
       }
     }
 
@@ -199,21 +222,21 @@ export function exportAttendanceCSV(members: Member[], meetingDate: string): voi
       escapeCsvField(m.department),
       escapeCsvField(status),
       escapeCsvField(time),
-      escapeCsvField(coords),
-      escapeCsvField(dist),
-      escapeCsvField(geofence),
+      escapeCsvField(venueName || 'Dewan Utama'),
+      escapeCsvField(venueAddress || '-'),
       escapeCsvField(selfieDisplay),
     ].join(',');
   });
 
-  const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+  const csvContent =
+    '\uFEFF' +
+    [...metadataBlock, headers.join(','), ...rows].join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
 
-  const cleanDate = meetingDate || new Date().toISOString().split('T')[0];
   link.setAttribute('href', url);
-  link.setAttribute('download', `Laporan_Kehadiran_e-Hadir_${cleanDate}.csv`);
+  link.setAttribute('download', `Laporan_Kehadiran_${cleanDate}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

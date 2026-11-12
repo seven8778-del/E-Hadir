@@ -124,7 +124,7 @@ export const QrModal: React.FC<QrModalProps> = ({
             {settings.meetingTitle}
           </h1>
           <p className="text-sm text-slate-600 mt-2 font-medium">
-            Tarikh: {settings.meetingDate} | Lokasi: {settings.venueName}
+            Tarikh: {settings.meetingDate} | Lokasi: {settings.venueName}{settings.venueAddress ? ` (${settings.venueAddress})` : ''}
           </p>
         </div>
 

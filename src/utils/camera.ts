@@ -94,3 +94,45 @@ export async function captureAndCompressFrame(
     }
   });
 }
+
+/**
+ * Compresses an image File captured via native camera (capture="user") to JPEG <= 150KB.
+ */
+export async function compressImageFile(
+  file: File,
+  maxWidth = 640,
+  quality = 0.7
+): Promise<{ dataUrl: string; sizeInKB: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const size = Math.min(img.width, img.height);
+        const startX = (img.width - size) / 2;
+        const startY = (img.height - size) / 2;
+        const outputDim = Math.min(size, maxWidth);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = outputDim;
+        canvas.height = outputDim;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Gagal memproses kanvas foto.'));
+          return;
+        }
+
+        ctx.drawImage(img, startX, startY, size, size, 0, 0, outputDim, outputDim);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const stringLength = dataUrl.length - 'data:image/jpeg;base64,'.length;
+        const sizeInBytes = 4 * Math.ceil(stringLength / 3) * 0.562489633438312;
+        const sizeInKB = Math.round((sizeInBytes / 1024) * 10) / 10;
+        resolve({ dataUrl, sizeInKB });
+      };
+      img.onerror = () => reject(new Error('Gagal membaca fail foto.'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Gagal memuat naik fail foto.'));
+    reader.readAsDataURL(file);
+  });
+}

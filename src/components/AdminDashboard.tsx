@@ -21,16 +21,12 @@ import {
   X,
   ChevronRight,
   MapPin,
-  Navigation,
-  Crosshair,
   QrCode,
 } from 'lucide-react';
 import { Member, SessionSettings, AttendanceFilter } from '../types';
 import { storageService } from '../services/storage';
 import { exportAttendanceCSV, parseMasterListCSV, generateSampleCsvTemplate } from '../utils/csv';
-import { VENUE_PRESETS, VenuePreset, getCurrentBrowserLocation } from '../utils/geolocation';
 import { SelfieModal } from './SelfieModal';
-import { LiveAttendanceMap } from './LiveAttendanceMap';
 
 interface AdminDashboardProps {
   settings: SessionSettings;
@@ -49,7 +45,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSwitchToKiosk,
   onOpenQrModal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'monitoring' | 'map' | 'settings'>('monitoring');
+  const [activeTab, setActiveTab] = useState<'monitoring' | 'settings'>('monitoring');
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<AttendanceFilter>('ALL');
@@ -61,42 +57,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editQuorum, setEditQuorum] = useState(settings.quorumTargetPercent);
   const [editPin, setEditPin] = useState(settings.adminPin);
 
-  // Venue & Geofencing settings state
+  // Manual Venue & Address settings state
   const [editVenueName, setEditVenueName] = useState(
-    settings.venueName || 'Pusat Konvensyen Kuala Lumpur (KLCC) - Dewan Perdana'
+    settings.venueName || 'Dewan Utama'
   );
-  const [editVenueLat, setEditVenueLat] = useState(settings.venueLat || 3.1531);
-  const [editVenueLng, setEditVenueLng] = useState(settings.venueLng || 101.7144);
-  const [editGeofenceRadius, setEditGeofenceRadius] = useState(
-    settings.geofenceRadiusMeters || 500
-  );
-  const [editEnableGeofence, setEditEnableGeofence] = useState(
-    settings.enableGeofence !== undefined ? settings.enableGeofence : true
+  const [editVenueAddress, setEditVenueAddress] = useState(
+    settings.venueAddress || 'Wisma Getah Asli, 148 Jalan Ampang, 50450 Kuala Lumpur'
   );
   const [settingsSavedNotice, setSettingsSavedNotice] = useState(false);
-  const [showManualCoords, setShowManualCoords] = useState(false);
-  const [isLocatingSettings, setIsLocatingSettings] = useState(false);
-  const [locationDetectNotice, setLocationDetectNotice] = useState<string | null>(null);
-
-  const handleUseCurrentLocationInSettings = async () => {
-    setIsLocatingSettings(true);
-    setLocationDetectNotice(null);
-    try {
-      const res = await getCurrentBrowserLocation();
-      if (res.location) {
-        setEditVenueLat(res.location.latitude);
-        setEditVenueLng(res.location.longitude);
-        setLocationDetectNotice('✓ Koordinat berjaya dikesan daripada peranti anda!');
-        setTimeout(() => setLocationDetectNotice(null), 3500);
-      } else {
-        alert(res.error || 'Gagal mengesan lokasi GPS peranti.');
-      }
-    } catch (e) {
-      alert('Ralat semasa meminta lokasi GPS peranti.');
-    } finally {
-      setIsLocatingSettings(false);
-    }
-  };
+  const [locationSavedNotice, setLocationSavedNotice] = useState(false);
 
   // CSV upload state
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -150,10 +119,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
   };
 
-  const handleApplyVenuePreset = (preset: VenuePreset) => {
-    setEditVenueName(preset.name);
-    setEditVenueLat(preset.lat);
-    setEditVenueLng(preset.lng);
+  const handleSaveLocation = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    storageService.updateSettings({
+      venueName: editVenueName.trim() || settings.venueName,
+      venueAddress: editVenueAddress.trim() || settings.venueAddress,
+    });
+    setLocationSavedNotice(true);
+    setTimeout(() => setLocationSavedNotice(false), 2500);
   };
 
   const handleSaveSettings = (e: React.FormEvent) => {
@@ -164,10 +137,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       quorumTargetPercent: Number(editQuorum) || 50,
       adminPin: editPin.trim() || '123456',
       venueName: editVenueName.trim() || settings.venueName,
-      venueLat: Number(editVenueLat) || settings.venueLat,
-      venueLng: Number(editVenueLng) || settings.venueLng,
-      geofenceRadiusMeters: Number(editGeofenceRadius) || 500,
-      enableGeofence: editEnableGeofence,
+      venueAddress: editVenueAddress.trim() || settings.venueAddress,
     });
     setSettingsSavedNotice(true);
     setTimeout(() => setSettingsSavedNotice(false), 2500);
@@ -268,7 +238,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
 
           <button
-            onClick={() => exportAttendanceCSV(members, settings.meetingDate)}
+            onClick={() =>
+              exportAttendanceCSV(
+                members,
+                settings.meetingTitle,
+                settings.meetingDate,
+                settings.venueName,
+                settings.venueAddress
+              )
+            }
             type="button"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition-colors shadow-xs"
           >
@@ -394,20 +372,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveTab('map')}
-          type="button"
-          className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0 ${
-            activeTab === 'map'
-              ? 'bg-emerald-950 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <MapPin className="w-3.5 h-3.5 text-emerald-300" />
-          <span>Peta Geofens Dewan</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-        </button>
-
-        <button
           onClick={() => setActiveTab('settings')}
           type="button"
           className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0 ${
@@ -416,18 +380,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          Tetapan Sesi & Pangkalan Data Induk
+          Tetapan Sesi & Lokasi Dewan
         </button>
       </div>
-
-      {/* TAB: Live Attendance Map */}
-      {activeTab === 'map' && (
-        <LiveAttendanceMap
-          settings={settings}
-          members={members}
-          onInspectMember={(m) => setInspectMember(m)}
-        />
-      )}
 
       {/* TAB 1: Live Attendance Ledger */}
       {activeTab === 'monitoring' && (
@@ -513,7 +468,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <th className="py-3 px-4">Nama Penuh Ahli</th>
                   <th className="py-3 px-4">Bahagian / Cawangan</th>
                   <th className="py-3 px-4">Status Kehadiran</th>
-                  <th className="py-3 px-4">Lokasi & Geofens</th>
                   <th className="py-3 px-4">Cap Masa</th>
                   <th className="py-3 px-4 text-center">Foto Selfie</th>
                 </tr>
@@ -521,7 +475,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-slate-400">
+                    <td colSpan={7} className="py-10 text-center text-slate-400">
                       Tiada rekod ahli berpadanan dengan carian ini.
                     </td>
                   </tr>
@@ -555,25 +509,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 font-mono text-[11px]">
-                        {member.location ? (
-                          <span
-                            className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[10px] ${
-                              member.location.isWithinGeofence
-                                ? 'bg-emerald-100 text-emerald-900'
-                                : 'bg-amber-100 text-amber-900'
-                            }`}
-                            title={`Ketepatan: ~${member.location.accuracy}m`}
-                          >
-                            <span>{member.location.isWithinGeofence ? '✓ Sah' : '⚠ Luar'}</span>
-                            <span>(~{member.location.distanceFromVenueMeters || 0}m)</span>
-                          </span>
-                        ) : member.hasAttended ? (
-                          <span className="text-slate-400 text-[11px]">Manual / Kiosk</span>
-                        ) : (
-                          <span className="text-slate-300">-</span>
-                        )}
-                      </td>
                       <td className="py-3 px-4 font-mono text-slate-600">
                         {member.attendedAt || '-'}
                       </td>
@@ -583,7 +518,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             onClick={() => setInspectMember(member)}
                             type="button"
                             className="inline-flex items-center gap-1.5 p-1 rounded-md hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                            title="Lihat Gambar Penuh & Audit Lokasi"
+                            title="Lihat Gambar Penuh Swafoto"
                           >
                             <img
                               src={member.selfieUrl}
@@ -684,144 +619,62 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 />
               </div>
 
-              {/* Geofencing & Venue Configuration Section */}
-              <div className="pt-4 border-t border-slate-200/80 space-y-3">
+              {/* Manual Text-Based Venue & Address Configuration (No GPS/Map) */}
+              <div className="pt-4 border-t border-slate-200/80 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-950 uppercase tracking-wider">
                     <MapPin className="w-4 h-4 text-emerald-800" />
-                    <span>Lokasi Dewan & Geofens Fizikal</span>
+                    <span>Lokasi & Alamat Dewan Acara</span>
                   </div>
-
-                  {/* 1-Click Current Location Detection Button */}
-                  <button
-                    type="button"
-                    onClick={handleUseCurrentLocationInSettings}
-                    disabled={isLocatingSettings}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-900 hover:bg-emerald-950 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                    title="Gunakan koordinat peranti anda sekarang tanpa perlu menaip nombor"
-                  >
-                    <Crosshair className={`w-3 h-3 ${isLocatingSettings ? 'animate-spin' : ''}`} />
-                    <span>{isLocatingSettings ? 'Mengesan GPS...' : '📍 Guna Lokasi Semasa'}</span>
-                  </button>
+                  {locationSavedNotice && (
+                    <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      ✓ Lokasi Disimpan!
+                    </span>
+                  )}
                 </div>
-
-                {locationDetectNotice && (
-                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>{locationDetectNotice}</span>
-                  </div>
-                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Nama Pusat / Dewan Mesyuarat
+                    Nama Dewan / Lokasi
                   </label>
                   <input
                     type="text"
                     value={editVenueName}
                     onChange={(e) => setEditVenueName(e.target.value)}
+                    placeholder="cth: Dewan Utama"
                     required
                     className="w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-800 focus:outline-hidden"
                   />
                 </div>
 
-                {/* Preset Venue Buttons - 1 Click without typing latitude */}
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5 font-bold">
-                    Pilihan Lokasi Dewan Popular (1-Klik Tanpa Perlu Taip):
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {VENUE_PRESETS.map((p) => (
-                      <button
-                        key={p.name}
-                        type="button"
-                        onClick={() => handleApplyVenuePreset(p)}
-                        className={`text-[10px] font-semibold px-2 py-1 rounded-md border transition-colors cursor-pointer ${
-                          editVenueName === p.name
-                            ? 'bg-emerald-900 text-white border-emerald-900'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-                        }`}
-                      >
-                        {p.name.split(' - ')[0].replace('Pusat Konvensyen ', '').replace('Pusat Dagangan Dunia ', '')} ({p.city})
-                      </button>
-                    ))}
-                  </div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Alamat Penuh
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editVenueAddress}
+                    onChange={(e) => setEditVenueAddress(e.target.value)}
+                    placeholder="cth: Wisma Getah Asli, 148 Jalan Ampang, 50450 Kuala Lumpur"
+                    required
+                    className="w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-800 focus:outline-hidden resize-none"
+                  />
                 </div>
 
-                {/* Visual Map Pinning Tip */}
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 space-y-1">
-                  <p className="leading-snug">
-                    <strong>📍 Cara Mudah Menukar Lokasi:</strong> Tekan butang <strong>"Guna Lokasi Semasa"</strong> di atas jika anda berada di dewan, atau buka tab <strong>"Peta Geofens Dewan"</strong> dan <strong>klik pada mana-mana titik di atas peta</strong> untuk mengalihkan pin dewan secara visual.
-                  </p>
-                </div>
-
-                {/* Collapsible Manual Coordinates for Advanced Users Only */}
-                <div>
+                {/* Dedicated Save Location Button */}
+                <div className="flex justify-end pt-1">
                   <button
                     type="button"
-                    onClick={() => setShowManualCoords(!showManualCoords)}
-                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                    onClick={handleSaveLocation}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-800 hover:bg-emerald-900 active:scale-[0.99] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
                   >
-                    {showManualCoords
-                      ? '▼ Sembunyikan Input Nombor Koordinat'
-                      : '▶ Masukkan Koordinat Latitud/Longitud Manual (Lanjutan)'}
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Simpan Lokasi</span>
                   </button>
-
-                  {showManualCoords && (
-                    <div className="grid grid-cols-2 gap-3 mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                          Latitud Dewan
-                        </label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={editVenueLat}
-                          onChange={(e) => setEditVenueLat(Number(e.target.value))}
-                          required
-                          className="w-full text-xs font-mono font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-hidden"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                          Longitud Dewan
-                        </label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={editVenueLng}
-                          onChange={(e) => setEditVenueLng(Number(e.target.value))}
-                          required
-                          className="w-full text-xs font-mono font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Radius Geofens: <span className="text-emerald-950 font-black font-mono">{editGeofenceRadius} meter</span>
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {[100, 250, 500, 1000].map((radius) => (
-                      <button
-                        key={radius}
-                        type="button"
-                        onClick={() => setEditGeofenceRadius(radius)}
-                        className={`flex-1 py-1.5 text-xs font-mono font-bold rounded-lg border transition-colors cursor-pointer ${
-                          editGeofenceRadius === radius
-                            ? 'bg-emerald-950 text-white border-emerald-950'
-                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        {radius}m
-                      </button>
-                    ))}
-                  </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 leading-relaxed">
+                  Nama dan alamat dewan ini akan dipaparkan secara rasmi pada skrin semakan ahli, kad pas digital dan laporan CSV kehadiran tanpa sebarang penjejakan GPS.
                 </div>
               </div>
 

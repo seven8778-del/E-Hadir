@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, RefreshCw, Check, AlertCircle, ArrowLeft, ShieldAlert, Sparkles } from 'lucide-react';
-import { captureAndCompressFrame, detectCameraEnvironment } from '../utils/camera';
+import { Camera, RefreshCw, Check, AlertCircle, ArrowLeft, ShieldAlert, Sparkles, Smartphone } from 'lucide-react';
+import { captureAndCompressFrame, compressImageFile, detectCameraEnvironment } from '../utils/camera';
 
 interface CameraCaptureProps {
   staffId: string;
@@ -105,6 +105,23 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
     }
   };
 
+  const handleFileCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsCapturing(true);
+      const result = await compressImageFile(file, 640, 0.7);
+      setCapturedImage(result.dataUrl);
+      setImageSizeKB(result.sizeInKB);
+      stopCamera();
+      setCameraError(null);
+    } catch (err: any) {
+      setCameraError('Gagal memproses swafoto kamera: ' + (err?.message || ''));
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
   const handleRetake = () => {
     setCapturedImage(null);
     setImageSizeKB(null);
@@ -151,14 +168,27 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               <ShieldAlert className="w-6 h-6" />
             </div>
             <p className="text-xs text-rose-200 leading-relaxed font-medium">{cameraError}</p>
-            <button
-              onClick={startCamera}
-              type="button"
-              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-white text-slate-900 rounded-lg hover:bg-slate-100"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Cuba Sekali Lagi
-            </button>
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                onClick={startCamera}
+                type="button"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold bg-white text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Cuba Sambung Semula</span>
+              </button>
+              <label className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg cursor-pointer transition-colors">
+                <Camera className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Buka Kamera Hadapan Telefon</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  className="hidden"
+                  onChange={handleFileCapture}
+                />
+              </label>
+            </div>
           </div>
         ) : capturedImage ? (
           /* Preview captured photo */

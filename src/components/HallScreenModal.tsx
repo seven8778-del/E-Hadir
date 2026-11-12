@@ -67,6 +67,9 @@ export const HallScreenModal: React.FC<HallScreenModalProps> = ({
             <h1 className="text-xl sm:text-2xl font-extrabold text-white truncate max-w-xl">
               {settings.meetingTitle}
             </h1>
+            <p className="text-xs text-emerald-400/90 truncate max-w-xl mt-0.5 font-medium">
+              📍 {settings.venueName || 'Dewan Utama'} · {settings.venueAddress || 'Alamat Rasmi Mesyuarat'}
+            </p>
           </div>
         </div>
 
